@@ -61,11 +61,28 @@ async function getAllFacebookPosts(
 
   while (url) {
     const response: AxiosResponse = await axios.get(url);
-    const posts: FacebookPost[] = response.data.data;
-    allPosts = allPosts.concat(posts);
+    const appUsage = response.headers["x-app-usage"];
 
-    // Get the URL for the next page of posts, or null if this is the last page
-    url = response.data.paging?.next || null;
+    if (appUsage) {
+      const usage = JSON.parse(appUsage);
+      console.log(usage);
+
+      // Check if any of the usage metrics are above a certain threshold
+      if (
+        usage.call_count > 90 ||
+        usage.total_time > 90 ||
+        usage.total_cputime > 90
+      ) {
+        // If usage is too high, wait for a while before making another request
+        await new Promise((resolve) => setTimeout(resolve, 60000 * 30));
+      } else {
+        const posts: FacebookPost[] = response.data.data;
+        allPosts = allPosts.concat(posts);
+
+        // Get the URL for the next page of posts, or null if this is the last page
+        url = response.data.paging?.next || null;
+      }
+    }
   }
 
   return allPosts;
@@ -135,7 +152,7 @@ export async function getFacebookPosts(
       const timestamp = date.getTime();
 
       // Get the first line of the message
-      const endOfFirstLine = post.message.indexOf("\n");
+      const endOfFirstLine = post.message.indexOf("\n") || -1;
       const title =
         endOfFirstLine !== -1
           ? post.message.slice(0, endOfFirstLine)
