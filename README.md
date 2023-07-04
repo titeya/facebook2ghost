@@ -49,6 +49,7 @@ Cette application utilise les variables d'environnement suivantes :
 - `FACEBOOK_APP_ID` : L'ID de votre application Facebook.
 - `FACEBOOK_APP_SECRET` : Le secret de votre application Facebook.
 - `APP_URL` : L'URL de votre application.
+- `AUTHOR_ID`: L'ID de l'auteur
 
 ## License
 

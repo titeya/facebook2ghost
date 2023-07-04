@@ -13,6 +13,7 @@ app.use(passport.initialize());
 const appID: string | undefined = process.env.FACEBOOK_APP_ID;
 const appSecret: string | undefined = process.env.FACEBOOK_APP_SECRET;
 const appURL: string | undefined = process.env.APP_URL;
+const authorId: number = Number(process.env.AUTHOR_ID) || 1;
 
 if (!appID || !appSecret || !appURL) {
   throw new Error("Missing environment variables");
@@ -144,9 +145,14 @@ if (!appID || !appSecret || !appURL) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    await getFacebookPosts(token as string, userId as string, (progress) => {
-      res.write(`data: ${progress}\n\n`);
-    });
+    await getFacebookPosts(
+      token as string,
+      userId as string,
+      authorId,
+      (progress) => {
+        res.write(`data: ${progress}\n\n`);
+      }
+    );
     res.write("data: done\n\n");
     res.end();
   });

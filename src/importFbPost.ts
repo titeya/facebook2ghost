@@ -74,6 +74,7 @@ async function getAllFacebookPosts(
 export async function getFacebookPosts(
   accessToken: string,
   userId: string,
+  authorId: number,
   progressCallback: (progress: number) => void
 ): Promise<void> {
   try {
@@ -86,6 +87,14 @@ export async function getFacebookPosts(
         post.attachments &&
         post.attachments.data.some((attachment) => attachment.type === "album")
     );
+
+    const imagesGh = [] as {
+      fileName: string;
+      row: number;
+      width: number;
+      height: number;
+      src: string;
+    }[];
 
     for (const post of albumPosts) {
       if (post.attachments) {
@@ -105,6 +114,16 @@ export async function getFacebookPosts(
               const filename = `${index}.jpg`;
               const dest = path.join(dir, filename);
               await downloadImage(image, dest);
+              imagesGh.push({
+                fileName: filename,
+                row: 0, // You may need to adjust this depending on your layout
+                width: 1000, // You may need to adjust this depending on your layout
+                height: 667, // You may need to adjust this depending on your layout
+                src:
+                  index === 0
+                    ? `/images/${post.id}/${filename}`
+                    : `/content/images/${post.id}/${filename}`,
+              });
             }
           }
         }
@@ -120,29 +139,30 @@ export async function getFacebookPosts(
       const title =
         endOfFirstLine !== -1
           ? post.message.slice(0, endOfFirstLine)
+          : "(Pas de titre)";
+
+      const restOfText =
+        endOfFirstLine !== -1
+          ? post.message.slice(endOfFirstLine + 1)
           : post.message;
 
       // Get the images
-      const images =
-        post.attachments?.data.flatMap(
-          (attachment) =>
-            attachment.subattachments?.data.map(
-              (subattachment, index) =>
-                `/content/images/${post.id}/${index}.jpg`
-            ) || []
-        ) || [];
-      const feature_image = images[0];
-      const gallery = images.slice(1);
+      const feature_image = imagesGh[0].src;
+      const gallery = imagesGh.slice(1);
+
+      const message = restOfText
+        .split("\n\n")
+        .map((paragraph) => [1, "p", [[0, [], 0, paragraph]]]);
 
       return {
         title: title,
         slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         mobiledoc: JSON.stringify({
           version: "0.3.1",
-          atoms: [],
-          cards: gallery.map((src) => ["image", { src }]),
+          atoms: [["soft-return", "", {}]],
+          cards: [["gallery", { images: gallery }]],
           markups: [],
-          sections: [[1, "p", [[0, [], 0, post.message]]]],
+          sections: [...message, [1, "p", [[0, [], 0, ""]]], [10, 0]],
         }),
         feature_image: feature_image,
         status: "published",
@@ -150,14 +170,16 @@ export async function getFacebookPosts(
         updated_at: timestamp,
         published_at: timestamp,
         custom_excerpt: "",
+        meta_title: title,
         tags: [],
-        author_id: "5bfd4421da4e9d0001371db3",
+        author_id: authorId,
       };
     });
 
     const ghostData = {
       db: [
         {
+          meta: { exported_on: new Date().getTime(), version: "2.38.3" },
           data: {
             posts: ghostPosts,
           },
