@@ -2,6 +2,8 @@ import express from "express";
 import passport from "passport";
 // import { promises as fsPromises } from "fs";
 import { Strategy as FacebookStrategy } from "passport-facebook";
+import axios from "axios";
+
 import { getFacebookPosts } from "./importFbPost";
 import dotenv from "dotenv";
 // import e from "express";
@@ -26,8 +28,19 @@ if (!appID || !appSecret || !appURL) {
         callbackURL: appURL + "/auth",
         profileFields: ["id", "displayName", "photos", "email"],
       },
-      function (accessToken, refreshToken, profile, done) {
+      async function (accessToken, refreshToken, profile, done) {
         // Vous pourriez ici stocker l'accessToken dans une base de données avec le profile.id comme clé
+        try {
+          const response = await axios.get(
+            `https://graph.facebook.com/v13.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.FACEBOOK_APP_ID}&client_secret=${process.env.FACEBOOK_APP_SECRET}&fb_exchange_token=${accessToken}`
+          );
+          const longLivedAccessToken = response.data.access_token;
+
+          // Vous pourriez ici stocker le longLivedAccessToken dans une base de données avec le profile.id comme clé
+          done(null, { accessToken: longLivedAccessToken, profile });
+        } catch (error) {
+          done(error);
+        }
         done(null, { accessToken, profile });
       }
     )
@@ -140,6 +153,19 @@ if (!appID || !appSecret || !appURL) {
     if (!token || !userId) {
       res.status(400).send("Missing token or userId");
       return;
+    }
+    try {
+      const response = await axios.get(
+        `https://graph.facebook.com/debug_token?input_token=${token}&access_token=${process.env.FACEBOOK_APP_ID}|${process.env.FACEBOOK_APP_SECRET}`
+      );
+      const data = response.data.data;
+      const expiryDate = new Date(data.expires_at * 1000); // convertir de timestamp Unix en objet Date JavaScript
+      console.log("Le token expire à : ", expiryDate);
+    } catch (error) {
+      console.error(
+        "Une erreur s'est produite lors de la vérification de la date d'expiration du token : ",
+        error
+      );
     }
 
     res.setHeader("Content-Type", "text/event-stream");

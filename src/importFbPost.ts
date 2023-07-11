@@ -151,25 +151,30 @@ export async function getFacebookPosts(
       const date = new Date(post.created_time);
       const timestamp = date.getTime();
 
-      // Get the first line of the message
-      const endOfFirstLine = post.message.indexOf("\n") || -1;
-      const title =
-        endOfFirstLine !== -1
-          ? post.message.slice(0, endOfFirstLine)
-          : "(Pas de titre)";
+      let title = "(Pas de titre)";
+      let message: any = [];
 
-      const restOfText =
-        endOfFirstLine !== -1
-          ? post.message.slice(endOfFirstLine + 1)
-          : post.message;
+      if (post.message) {
+        // Get the first line of the message
+        const endOfFirstLine = post.message.indexOf("\n") || -1;
+        title =
+          endOfFirstLine !== -1
+            ? post.message.slice(0, endOfFirstLine)
+            : "(Pas de titre)";
+
+        const restOfText =
+          endOfFirstLine !== -1
+            ? post.message.slice(endOfFirstLine + 1)
+            : post.message;
+
+        message = restOfText
+          .split("\n\n")
+          .map((paragraph) => [1, "p", [[0, [], 0, paragraph]]]);
+      }
 
       // Get the images
       const feature_image = imagesGh[0].src;
       const gallery = imagesGh.slice(1);
-
-      const message = restOfText
-        .split("\n\n")
-        .map((paragraph) => [1, "p", [[0, [], 0, paragraph]]]);
 
       return {
         title: title,
